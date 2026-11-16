@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-100 font-sans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICREW - PAYROLL</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- html2pdf.js for exporting PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- html2canvas for exporting Image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sunred: {
+                            50: '#fdf2f4',
+                            100: '#fbe5e8',
+                            200: '#f7cfd4',
+                            700: '#a31b2e',
+                            800: '#801424',
+                            900: '#5c0d19',
+                            950: '#3a060e',
+                        },
+                        sungold: {
+                            400: '#f5c842',
+                            500: '#ebb02d',
+                            600: '#d49a1b',
+                        },
+                        inlineInput: '#ffffff',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes spinSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+            animation: spinSlow 22s linear infinite;
+        }
+
+        /* Ẩn mũi tên tăng giảm (spinner) trên tất cả các input number */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 5mm 6mm;
+            }
+            body { 
+                background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print { display: none !important; }
+            #payslipPreviewCard .no-print-keep { display: none !important; }
+            
+            #payslipPreviewCard { 
+                box-shadow: none !important; 
+                border: none !important; 
+                width: 100% !important; 
+                max-width: 100% !important; 
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            table th, table td {
+                padding-top: 3px !important;
+                padding-bottom: 3px !important;
+                font-size: 10.5px !important;
+            }
+            input, select {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        
+        .pdf-compact table th, .pdf-compact table td {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+            font-size: 10.5px !important;
+        }
+        .pdf-compact {
+            padding: 12px !important;
+        }
+
+        /* Inline Table Input Styling */
+        .inline-table-input {
+            background-color: transparent;
+            border: none;
+            border-radius: 6px;
+            padding: 3px 6px;
+            font-weight: 400;
+            color: #0f172a;
+            text-align: center;
+            width: 100%;
+            max-width: 90px;
+            font-size: 12px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .inline-table-input::placeholder {
+            color: transparent;
+        }
+        .inline-table-input:focus {
+            background-color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(163, 27, 46, 0.15);
+        }
+        .inline-table-input-currency {
+            max-width: 90px;
+            text-align: center;
+            font-weight: 400 !important;
+        }
+
+        /* Input Container with Dynamic Sun Icon Watermark */
+        .input-sun-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 90px;
+            margin: 0 auto;
+        }
+        .input-sun-wrapper .sun-watermark {
+            position: absolute;
+            pointer-events: none;
+            color: #cbd5e1;
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.2s;
+        }
+        .input-sun-wrapper.has-value .sun-watermark {
+            opacity: 0;
+        }
+
+        .header-input-left {
+            text-align: left !important;
+            background-color: #ffffff !important;
+            padding-left: 10px !important;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased flex flex-col min-h-screen selection:bg-sunred-800 selection:text-white">
+
+    <!-- SVG DEF: Logo Mặt Trời Sun Group Cánh Nhọn Chuẩn Mẫu -->
+    <svg style="display: none;">
+        <defs>
+            <g id="sungroup-sun-logo" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="16.5" fill="currentColor" />
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(40 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(80 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(120 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(160 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(200 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(240 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(280 50 50)"/>
+                <path d="M 50,30.5 C 56.5,30 62,25 66.5,17 C 70.8,9.2 68.2,2 68.2,2 C 68.2,2 60,5.2 52.8,11.5 C 45.5,17.8 44.5,25.2 47.8,29.8 C 48.5,30.2 49.2,30.4 50,30.5 Z" fill="currentColor" transform="rotate(320 50 50)"/>
+            </g>
+        </defs>
+    </svg>
+
+    <!-- Header Navigation Bar -->
+    <header class="bg-sunred-950 text-white border-b border-sunred-800 sticky top-0 z-50 shadow-lg no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-sunred-800 border border-sungold-500/50 flex items-center justify-center text-sungold-500 p-1.5 shadow-md shadow-sunred-950/60">
+                    <svg class="w-full h-full text-sungold-500 animate-spin-slow" viewBox="0 0 100 100">
+                        <use href="#sungroup-sun-logo" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-black text-lg leading-tight tracking-wide text-white">ICREW <span class="text-sungold-500 font-light">- PAYROLL</span></h1>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <!-- Nút Gửi yêu cầu -->
+                <button type="button" onclick="openRequestModal()" class="px-4 py-2 text-xs font-bold bg-sunred-800 hover:bg-sunred-700 text-white border border-sunred-700 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm">
+                    <i class="fa-solid fa-paper-plane text-sungold-500 text-xs"></i>
+                    <span>Gửi yêu cầu</span>
+                </button>
+
+                <!-- Nút Owner Dashboard (Thông báo) -->
+                <button type="button" onclick="openOwnerModal()" class="px-4 py-2 text-xs font-bold bg-sunred-800 hover:bg-sunred-700 text-white border border-sunred-700 rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm" title="Quản lý yêu cầu (Owner)">
+                    <i class="fa-solid fa-bell text-sungold-500 text-xs"></i>
+                    <span>Thông báo</span>
+                    <span id="ownerBadgeCount" class="bg-sungold-500 text-sunred-950 font-black px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+                </button>
+
+                <div class="relative inline-block text-left">
+                    <div>
+                        <button type="button" onclick="toggleExportMenu()" class="px-4 py-2 text-xs font-bold bg-sunred-800 hover:bg-sunred-700 text-white border border-sunred-700 rounded-xl transition-all shadow-sm flex items-center space-x-2">
+                            <i class="fa-solid fa-download text-sungold-500 text-xs"></i>
+                            <span>Xuất Phiếu Lương</span>
+                            <i class="fa-solid fa-chevron-down text-[10px] ml-1 text-sungold-500"></i>
+                        </button>
+                    </div>
+
+                    <div id="exportDropdown" class="hidden origin-top-right absolute right-0 mt-2 w-48 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-slate-100 focus:outline-none z-50">
+                        <div class="py-1">
+                            <button onclick="exportPayslipPDF(); toggleExportMenu();" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-sunred-50 hover:text-sunred-900 flex items-center space-x-2.5">
+                                <i class="fa-solid fa-file-pdf text-sunred-800 text-sm w-4"></i>
+                                <span>Xuất file PDF</span>
+                            </button>
+                            <button onclick="exportPayslipImage(); toggleExportMenu();" class="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-sunred-50 hover:text-sunred-900 flex items-center space-x-2.5">
+                                <i class="fa-solid fa-file-image text-emerald-600 text-sm w-4"></i>
+                                <span>Lưu về máy (Ảnh PNG)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+
+        <!-- Status Bar đọc AI (nếu kích hoạt) -->
+        <div id="aiStatus" class="hidden no-print p-3 rounded-xl border text-xs font-medium flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i id="aiStatusIcon" class="fa-solid fa-spinner animate-spin text-sunred-800 text-sm"></i>
+                <span id="aiStatusText" class="text-slate-800">Đang tự động quét và nhập dữ liệu từ bảng lương...</span>
+            </div>
+            <button onclick="document.getElementById('aiStatus').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+
+        <!-- Thanh Thao Tác Phụ Gọn Gàng -->
+        <div class="no-print flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Ô 1: Transfer PQC -->
+                <div class="relative group">
+                    <div class="absolute bottom-full left-0 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                        <span>Chọn nếu trong kỳ lương này bạn chuyển base PQC</span>
+                    </div>
+
+                    <div class="bg-[#5c0d19] hover:bg-[#4a0a14] border-2 border-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm transition-all w-[180px]">
+                        <label class="relative inline-flex items-center cursor-pointer mr-3">
+                            <input type="checkbox" id="checkPQC" onchange="togglePQCInputs(); calculateAll();" class="sr-only peer">
+                            <div class="w-9 h-5 bg-sunred-950 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#ebb02d] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#a31b2e] border border-sunred-800"></div>
+                        </label>
+                        <span class="text-xs font-bold text-white select-none whitespace-nowrap tracking-wide text-right">Chuyển PQC</span>
+                    </div>
+                </div>
+
+                <!-- Ô 2: Báo ốm -->
+                <div class="relative group">
+                    <div class="absolute bottom-full left-0 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                        <span>Nhập tổng số ngày ốm</span>
+                    </div>
+
+                    <div class="bg-[#5c0d19] hover:bg-[#4a0a14] border-2 border-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm transition-all w-[180px]">
+                        <label class="relative inline-flex items-center cursor-pointer mr-3">
+                            <input type="checkbox" id="checkSick" onchange="toggleSickInputs(); calculateAll();" class="sr-only peer">
+                            <div class="w-9 h-5 bg-sunred-950 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#ebb02d] after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#a31b2e] border border-sunred-800"></div>
+                        </label>
+                        <span class="text-xs font-bold text-white select-none whitespace-nowrap tracking-wide text-right">Báo ốm</span>
+                    </div>
+                </div>
+
+                <div id="pqcDaysWrapper" class="hidden flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-300 shadow-sm">
+                    <span class="text-xs font-semibold text-slate-700">Số ngày PQC:</span>
+                    <div class="input-sun-wrapper max-w-[80px]">
+                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                        <input type="number" step="0.5" id="inputPqcDays" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input max-w-[80px] py-1 text-xs">
+                    </div>
+                </div>
+
+                <div id="sickDaysWrapper" class="hidden flex items-center space-x-2 bg-white px-3 py-2 rounded-xl border border-slate-300 shadow-sm">
+                    <span class="text-xs font-semibold text-slate-700">Số ngày ốm:</span>
+                    <div class="input-sun-wrapper max-w-[80px]">
+                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                        <input type="number" step="0.5" id="inputSickDays" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input max-w-[80px] py-1 text-xs">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nút Upload File Đọc Bảng Lương (AI) đặt bên góc phải cùng hàng với Báo ốm -->
+            <div class="relative ml-auto flex items-center space-x-3">
+                <!-- Ô Lương Thực Nhận Xem Nhanh VIẾT THƯỜNG VÀ CÓ ICON -->
+                <div class="bg-[#5c0d19] border-2 border-white rounded-xl px-3.5 py-2 flex items-center space-x-2 shadow-sm">
+                    <i class="fa-solid fa-wallet text-sungold-500 text-xs"></i>
+                    <span class="text-[11px] font-bold text-white whitespace-nowrap">Lương Thực Nhận:</span>
+                    <span id="quickNetDisplay" class="text-xs font-black text-[#ebb02d] whitespace-nowrap">0</span>
+                </div>
+
+                <input type="file" id="imageUploader" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFileUpload(event)">
+                <label for="imageUploader" class="bg-[#5c0d19] hover:bg-[#4a0a14] border-2 border-white rounded-xl px-4 py-2 flex items-center space-x-2 shadow-sm transition-all cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-up text-sungold-500 text-sm"></i>
+                    <span id="uploadBtnText" class="text-xs font-bold text-white whitespace-nowrap tracking-wide">Đọc Bảng Lương (AI)</span>
+                </label>
+            </div>
+        </div>
+
+        <div id="payslipPreviewCard" class="bg-white rounded-2xl p-6 sm:p-10 shadow-lg border border-slate-200 space-y-6">
+
+            <!-- Header Payslip Title & Info Block -->
+            <div class="border-b-2 border-sunred-800 pb-5 space-y-4">
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-900 tracking-tight">PHIẾU LƯƠNG THÁNG</h2>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">Kỳ tính lương <span id="currentMonthYear" class="font-bold text-sunred-900">--/----</span></p>
+                    </div>
+
+                    <div class="no-print flex items-center space-x-2">
+                        <button type="button" onclick="resetForm()" class="px-4 py-2 text-xs font-bold text-white bg-[#5c0d19] hover:bg-[#4a0a14] border border-[#a31b2e] rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm cursor-pointer tracking-wide">
+                            <i class="fa-solid fa-rotate-right text-sm text-sungold-500"></i>
+                            <span>Đặt lại</span>
+                        </button>
+                        
+                        <div class="relative group inline-flex">
+                            <div class="absolute bottom-full right-0 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                <span>Diễn giải bảng lương</span>
+                            </div>
+                            <button type="button" onclick="openExplanationModal()" class="px-4 py-2 text-xs font-bold text-white bg-[#5c0d19] hover:bg-[#4a0a14] border border-[#a31b2e] rounded-xl transition-all flex items-center justify-center space-x-2 shadow-sm cursor-pointer tracking-wide">
+                                <i class="fa-solid fa-book-open text-sm text-sungold-500"></i>
+                                <span>Diễn giải</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Header Employee Info Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 text-xs bg-white p-4 rounded-xl border border-slate-200">
+                    <div class="flex items-center justify-between sm:justify-start sm:space-x-4">
+                        <span class="font-semibold text-slate-700 w-36">Chức danh</span>
+                        <select id="inputJobTitle" onchange="onJobTitleChange()" class="inline-table-input max-w-[200px] text-xs font-bold cursor-pointer py-1 text-left px-2 border-0 bg-transparent shadow-none focus:ring-0">
+                            <option value="tnhk" selected>Tiếp viên hàng không</option>
+                            <option value="tvktg">Tiếp viên khoang thương gia</option>
+                            <option value="tvt">Tiếp viên trưởng</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-start sm:space-x-4">
+                        <span class="font-semibold text-slate-700 w-36">Cấp nhân sự</span>
+                        <span class="font-bold text-slate-900 px-2 py-1 text-left">3C</span>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-start sm:space-x-4">
+                        <span class="font-semibold text-slate-700 w-36">Điểm đánh giá</span>
+                        <div class="relative group inline-flex justify-center w-full max-w-[100px]">
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                <span>Nhập điểm đánh giá</span>
+                            </div>
+                            <div class="input-sun-wrapper max-w-[100px]" id="wrapperC4">
+                                <span class="sun-watermark">
+                                    <svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg>
+                                </span>
+                                <input type="number" step="0.1" min="0" max="100" id="inputC4" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input max-w-[100px] py-1 text-xs font-bold header-input-left border-0 bg-transparent shadow-none focus:ring-0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-start sm:space-x-4">
+                        <span class="font-semibold text-slate-700 w-36">Nhập công chuẩn</span>
+                        <div class="relative group inline-flex justify-center w-full max-w-[100px]">
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                <span>Nhập công chuẩn tháng</span>
+                            </div>
+                            <div class="input-sun-wrapper max-w-[100px]" id="wrapperG4">
+                                <span class="sun-watermark">
+                                    <svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg>
+                                </span>
+                                <input type="number" step="0.5" id="inputG4" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input max-w-[100px] py-1 text-xs font-bold header-input-left border-0 bg-transparent shadow-none focus:ring-0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Details Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse border border-slate-200">
+                    <thead>
+                        <tr class="bg-sunred-900 text-white font-semibold text-center">
+                            <th rowspan="2" class="py-2.5 px-3 border border-sunred-800 align-middle text-center">CẤU PHẦN</th>
+                            <th colspan="2" class="py-2 px-3 border border-sunred-800 text-center">Cấp bậc hiện tại<br>(CC)</th>
+                            <th rowspan="2" class="py-2.5 px-3 border border-sunred-800 text-center align-middle w-36">Thành tiền</th>
+                        </tr>
+                        <tr class="bg-sunred-900 text-white font-semibold text-center">
+                            <th class="py-2 px-3 border border-sunred-800 w-36 text-center">Đơn giá</th>
+                            <th class="py-2 px-3 border border-sunred-800 w-36 text-center">Thực hiện</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+
+                        <!-- I. THU NHẬP CỐ ĐỊNH -->
+                        <tr class="bg-sunred-50/75 font-bold text-sunred-900">
+                            <td class="py-2 px-3 border border-slate-200" colspan="3">I) THU NHẬP CỐ ĐỊNH</td>
+                            <td id="outSecI" class="py-2 px-3 border border-slate-200 text-right text-sunred-900 font-extrabold">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">1. Lương cơ bản</td>
+                            <td id="unitBaseSalaryCell" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">
+                                <span id="unitBaseSalary">6.000.000</span>
+                                <div class="input-sun-wrapper hidden" id="wrapperCustomBaseSalary">
+                                    <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                    <input type="text" id="inputCustomBaseSalary" value="" placeholder="" oninput="checkInputSun(this); handleCurrencyInput(this); calculateAll();" class="inline-table-input inline-table-input-currency text-xs font-normal py-1 bg-white">
+                                </div>
+                            </td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Nhập ngày công thực tế</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" step="0.5" id="inputG9" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input text-xs font-normal">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outH9" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">2. Hỗ trợ trang điểm</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">300.000</td>
+                            <td id="outG9_val2" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-800">0</td>
+                            <td id="outH10" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">3. Hỗ trợ điện thoại (*)</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">200.000</td>
+                            <td id="outG9_val3" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-800">0</td>
+                            <td id="outH11" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">4. Hỗ trợ văn phòng phẩm (*)</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">200.000</td>
+                            <td id="outG9_val4" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-800">0</td>
+                            <td id="outH12" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">5. Hỗ trợ trang phục (*)</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">410.000</td>
+                            <td id="outG9_val5" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-800">0</td>
+                            <td id="outH13" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+
+                        <!-- II. THU NHẬP GẮN VỚI DỊCH VỤ -->
+                        <tr class="bg-sunred-50/75 font-bold text-sunred-900">
+                            <td class="py-2 px-3 border border-slate-200" colspan="3">II) THU NHẬP GẮN VỚI DỊCH VỤ & TUÂN THỦ</td>
+                            <td id="outSecII" class="py-2 px-3 border border-slate-200 text-right text-sunred-900 font-extrabold">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">
+                                1. Lương giờ bay thương mại
+                            </td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-700 text-[11.5px] leading-tight">
+                                ≤ 85h : 126.000 <br>> 85h : 163.800
+                            </td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Nhập tổng giờ bay thương mại</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" step="0.1" id="inputD18" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input text-xs font-normal">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outSecIITotalFlight" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">2. Lương chặng bay</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">63.000</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Nhập tổng chặng bay</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" id="inputG22" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input text-xs font-normal">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outH22" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">3. Lương giờ bay chuyển sân</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">37.800</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Nhập tổng giờ chuyển sân</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" step="0.1" id="inputG23" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input text-xs font-normal">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outH23" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">4. Thưởng ý thức chất lượng công việc</td>
+                            <td id="outBonusRate" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">4.390.000</td>
+                            <td id="outBonusWork" class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-800">0</td>
+                            <td id="outBonusTotal" class="py-2 px-3 border border-slate-200 text-right font-normal">0</td>
+                        </tr>
+
+                        <!-- III. PHỤ CẤP BỔ SUNG -->
+                        <tr class="bg-sunred-50/75 font-bold text-sunred-900">
+                            <td class="py-2 px-3 border border-slate-200" colspan="2">III) PHỤ CẤP, HỖ TRỢ, CÁC KHOẢN BỔ SUNG KHÁC</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Nhập số tiền</span>
+                                    </div>
+                                    <div id="globalToggleContainer" class="no-print flex items-center justify-center space-x-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="checkGlobalAmountMode" onchange="toggleGlobalAmountMode()" class="sr-only peer">
+                                            <div class="w-6 h-3.5 bg-sunred-950/40 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-[10px] peer-checked:after:border-white after:content-[''] after:absolute after:top-[1.5px] after:left-[1.5px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:bg-[#a31b2e]/75 border border-sunred-900/30"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outSecIII" class="py-2 px-3 border border-slate-200 text-right text-sunred-900 font-extrabold">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">
+                                <span>1. Hỗ trợ ăn ca (*)</span>
+                            </td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">50.000</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Nhập số ngày ăn ca & gửi xe</span>
+                                    </div>
+                                    <div id="mealDaysWrapper" class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" step="any" id="inputG28" value="" placeholder="" oninput="checkInputSun(this); handleAllowanceInput(); calculateAll()" class="inline-table-input text-xs font-normal">
+                                    </div>
+                                </div>
+                                <span id="mealDaysDisplay" class="hidden font-normal text-slate-800">0</span>
+                            </td>
+                            <td id="outH28Cell" class="py-2 px-3 border border-slate-200 text-right font-normal">
+                                <span id="outH28">0</span>
+                                <div id="mealAmountWrapper" class="input-sun-wrapper hidden max-w-[110px] ml-auto">
+                                    <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                    <input type="text" id="inputMealAmount" value="" placeholder="" oninput="checkInputSun(this); handleCurrencyInput(this); handleAllowanceInput(); calculateAll()" class="inline-table-input inline-table-input-currency text-xs font-normal py-1 bg-white text-right" title="Nhập trực tiếp số tiền ăn ca">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">
+                                <span>2. Hỗ trợ gửi xe</span>
+                            </td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-normal text-slate-600">10.000</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center">
+                                <span id="outParkingDays" class="font-normal text-slate-800">0</span>
+                            </td>
+                            <td id="outH29Cell" class="py-2 px-3 border border-slate-200 text-right font-normal">
+                                <span id="outH29">0</span>
+                                <div id="parkingAmountWrapper" class="input-sun-wrapper hidden max-w-[110px] ml-auto">
+                                    <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                    <input type="text" id="inputParkingAmount" value="" placeholder="" oninput="checkInputSun(this); handleCurrencyInput(this); handleAllowanceInput(); calculateAll()" class="inline-table-input inline-table-input-currency text-xs font-normal py-1 bg-white text-right" title="Nhập trực tiếp số tiền gửi xe">
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- IV. THU NHẬP KHÁC -->
+                        <tr class="bg-sunred-50/75 font-bold text-sunred-900">
+                            <td class="py-2 px-3 border border-slate-200" colspan="3">IV) CÁC KHOẢN THU NHẬP KHÁC</td>
+                            <td id="outSecIV" class="py-2 px-3 border border-slate-200 text-right text-sunred-900 font-extrabold">0</td>
+                        </tr>
+                        <tr>
+                            <td id="layoverLabelCell" class="py-2 px-3 border border-slate-200 text-slate-700">1. Layover (*)</td>
+                            <td id="layoverDomCell" class="py-1 px-2 border border-slate-200 text-center text-[11px] font-normal text-slate-800">
+                                <span class="block text-slate-700 font-normal leading-tight mb-1">Domestic</span>
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Perdiem Dom</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" step="any" id="inputF35" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input text-xs font-normal py-1">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="layoverIntlCell" class="py-1 px-2 border border-slate-200 text-center text-[11px] font-normal text-slate-800">
+                                <span class="block text-slate-700 font-normal leading-tight mb-1">International</span>
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Perdiem Int</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="number" step="any" id="inputG35" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input text-xs font-normal py-1">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outH35" class="py-2 px-3 border border-slate-200 text-right font-normal align-middle">0</td>
+                        </tr>
+
+                        <!-- DÒNG PHÚ QUỐC ẨN/HIỆN ĐỘNG -->
+                        <tr id="rowPqcCongTac" class="hidden">
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">2. Công tác phí tại Base Phú Quốc</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-medium text-slate-600">3.250.000</td>
+                            <td id="outPqcCongTacRatio" class="py-2 px-3 border border-slate-200 text-center font-bold text-slate-800">0</td>
+                            <td id="outPqcCongTacVal" class="py-2 px-3 border border-slate-200 text-right font-medium">0</td>
+                        </tr>
+                        <tr id="rowPqcHoTro" class="hidden">
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700">3. Hỗ trợ chuyển Base Phú Quốc (*)</td>
+                            <td class="py-2 px-3 border border-slate-200 text-center font-medium text-slate-600">4.000.000</td>
+                            <td id="outPqcHoTroRatio" class="py-2 px-3 border border-slate-200 text-center font-bold text-slate-800">0</td>
+                            <td id="outPqcHoTroVal" class="py-2 px-3 border border-slate-200 text-right font-medium">0</td>
+                        </tr>
+
+                        <tr id="rowWelfare">
+                            <td id="labelWelfareRow" class="py-2 px-3 border border-slate-200 text-slate-700" colspan="2">2. Chế độ phúc lợi (Quà sinh nhật/ Cưới hỏi/ Sinh con/ Ốm đau...)</td>
+                            <td id="cellWelfareInput" class="py-1.5 px-2 border border-slate-200 text-center">
+                                <div class="relative group inline-flex justify-center w-full">
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                        <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                        <span>Số tiền</span>
+                                    </div>
+                                    <div class="input-sun-wrapper">
+                                        <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                        <input type="text" id="inputWelfare" value="" placeholder="" oninput="checkInputSun(this); handleCurrencyInput(this); calculateAll();" class="inline-table-input inline-table-input-currency text-xs py-1">
+                                    </div>
+                                </div>
+                            </td>
+                            <td id="outWelfareVal" class="py-2 px-3 border border-slate-200 text-right font-medium">0</td>
+                        </tr>
+
+                        <!-- A. THU NHẬP THỰC NHẬN CƠ BẢN -->
+                        <tr class="bg-sunred-50/75 font-bold text-slate-900">
+                            <td class="py-2.5 px-3 border border-slate-200 text-sunred-900" colspan="3">A. THU NHẬP THỰC NHẬN CƠ BẢN ( I + II + III + IV )</td>
+                            <td id="outTongA" class="py-2.5 px-3 border border-slate-200 text-right text-sunred-900 font-extrabold">0</td>
+                        </tr>
+
+                        <!-- B. THU NHẬP ĐẢM BẢO -->
+                        <tr class="bg-sunred-50/75 font-bold text-slate-900">
+                            <td class="py-2.5 px-3 border border-slate-200 text-sunred-900" colspan="3">B. THU NHẬP ĐẢM BẢO: 13.500.000 VND</td>
+                            <td id="outTongB" class="py-2.5 px-3 border border-slate-200 text-right text-sunred-900 font-extrabold">0</td>
+                        </tr>
+
+                        <!-- MỨC THU NHẬP ÁP DỤNG = MAX( A , B ) -->
+                        <tr class="bg-sunred-50/75 font-bold text-slate-900">
+                            <td class="py-2.5 px-3 border border-slate-200 text-sunred-900" colspan="3">MỨC THU NHẬP ÁP DỤNG = MAX( A , B )</td>
+                            <td id="outThuNhapApDung" class="py-2.5 px-3 border border-slate-200 text-right font-extrabold text-sunred-900">0</td>
+                        </tr>
+
+                        <!-- C BẢO HIỂM XÃ HỘI -->
+                        <tr class="bg-sunred-50/75 font-bold text-sunred-900">
+                            <td colspan="4" class="py-2.5 px-3 border border-slate-200 text-sunred-900">C. BẢO HIỂM XÃ HỘI</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700" colspan="3">1. Bảo hiểm xã hội trích trừ</td>
+                            <td id="outH45" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700" colspan="3">2. Công đoàn phí</td>
+                            <td id="outH46" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900">0</td>
+                        </tr>
+
+                        <!-- D THUẾ TNCN -->
+                        <tr class="bg-sunred-50/75 font-bold text-sunred-900">
+                            <td colspan="4" class="py-2.5 px-3 border border-slate-200 text-sunred-900">D. THUẾ TNCN</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700" colspan="3">1. Thu nhập không chịu thuế<br><span class="text-[11px] text-slate-500 pl-4 block">(Gồm các khoản (*) phía trên)</span></td>
+                            <td id="outH48" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700" colspan="3">2. Thu nhập chịu thuế</td>
+                            <td id="outH49" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900">0</td>
+                        </tr>
+                        <tr>
+                            <td id="labelGiamTruGiaCanh" class="py-2 px-3 border border-slate-200 text-slate-700" colspan="3">
+                                <div class="flex items-center space-x-1.5 flex-wrap">
+                                    <span>3. Giảm trừ gia cảnh - <span id="textDependentLabel">Người phụ thuộc</span></span>
+                                    <div class="relative group inline-flex justify-center">
+                                        <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex items-center space-x-2 bg-pink-100 text-pink-900 border border-pink-200 px-3 py-1.5 rounded-xl text-xs font-semibold shadow-md whitespace-nowrap z-50 pointer-events-none">
+                                            <i class="fa-solid fa-circle-info text-pink-700"></i>
+                                            <span>Số NPT</span>
+                                        </div>
+                                        <div class="input-sun-wrapper max-w-[55px] group/dep relative">
+                                            <span class="sun-watermark"><svg class="w-3.5 h-3.5 text-sunred-800/40" viewBox="0 0 100 100"><use href="#sungroup-sun-logo"/></svg></span>
+                                            <input type="number" min="0" max="10" id="inputH50" value="" placeholder="" oninput="checkInputSun(this); calculateAll()" class="inline-table-input max-w-[55px] py-0.5 text-xs text-center font-normal border-0 bg-transparent group-hover/dep:bg-white group-hover/dep:border group-hover/dep:border-rose-300 focus:bg-white focus:border focus:border-sunred-800 focus:ring-2 focus:ring-sunred-800/20 transition-all rounded-md shadow-none">
+                                        </div>
+                                    </div>
+                                    <span></span>
+                                </div>
+                            </td>
+                            <td id="outGiamTruGiaCanh" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900 bg-white">0</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-3 border border-slate-200 text-slate-700" colspan="3">4. Thuế TNCN</td>
+                            <td id="outH51" class="py-2 px-3 border border-slate-200 text-right font-normal text-slate-900">0</td>
+                        </tr>
+
+                        <!-- LƯƠNG THỰC NHẬN FINAL -->
+                        <tr class="bg-sungold-500 text-sunred-950 font-extrabold text-sm border-t-2 border-sungold-600">
+                            <td colspan="3" class="py-3 px-3 border border-sungold-600 uppercase tracking-wide text-left pl-4">THỰC NHẬN</td>
+                            <td id="outFinalNet" class="py-3 px-3 border border-sungold-600 text-right text-base text-sunred-950 font-black">0</td>
+                        </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-sunred-950 text-slate-400 text-xs py-5 border-t border-sunred-900 mt-auto no-print">
+        <div class="max-w-7xl mx-auto px-4 text-center space-y-1">
+            <p class="font-normal text-slate-300">Internal Use Only</p>
+            <p class="text-sungold-500/80 font-semibold flex items-center justify-center space-x-2 text-[9px]">
+                <i class="fa-solid fa-sun text-sungold-500 text-[8px] animate-spin-slow"></i>
+                <span>Made by Jackie</span>
+                <i class="fa-solid fa-sun text-sungold-500 text-[8px] animate-spin-slow"></i>
+            </p>
+        </div>
+    </footer>
+
+    <!-- Modal Xem Diễn Giải Thu Nhập -->
+    <div id="explanationModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <!-- Modal Header -->
+            <div class="bg-sunred-950 text-white px-6 py-4 flex items-center justify-between border-b border-sunred-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-sunred-800 flex items-center justify-center text-sungold-500">
+                        <i class="fa-solid fa-file-lines text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-white">DIỄN GIẢI THU NHẬP</h3>
+                        <p class="text-[11px] text-slate-300 font-light italic">Description of income components</p>
+                    </div>
+                </div>
+                <button onclick="closeExplanationModal()" class="w-8 h-8 rounded-full bg-sunred-900 hover:bg-sunred-800 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content / Full Vietnamese Content Streamlined -->
+            <div class="p-6 overflow-y-auto space-y-6 text-slate-700 text-xs sm:text-sm bg-slate-50/50">
+                
+                <!-- SECTION I -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="border-b border-sunred-100 pb-2 flex items-center justify-between">
+                        <h4 class="font-black text-sunred-900 text-sm uppercase tracking-wider flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sunred-800"></span>
+                            <span>I. Thu nhập cơ bản bao gồm: / Basic Income includes:</span>
+                        </h4>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="p-3 bg-slate-50/90 rounded-xl border border-slate-200 divide-y divide-slate-200/60 text-xs">
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">1</span>
+                                <span class="font-medium text-slate-800">Lương cơ bản</span>
+                            </div>
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">2</span>
+                                <span class="font-medium text-slate-800">Hỗ trợ trang điểm</span>
+                            </div>
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">3</span>
+                                <span class="font-medium text-slate-800">Hỗ trợ điện thoại</span>
+                            </div>
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">4</span>
+                                <span class="font-medium text-slate-800">Hỗ trợ chi phí văn phòng phẩm</span>
+                            </div>
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">5</span>
+                                <span class="font-medium text-slate-800">Hỗ trợ trang phục</span>
+                            </div>
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">6</span>
+                                <span class="font-medium text-slate-800">Hỗ trợ nhà ở</span>
+                            </div>
+                            <div class="py-1.5 flex items-center space-x-2">
+                                <span class="w-5 h-5 rounded-full bg-sunred-100 text-sunred-900 font-bold flex items-center justify-center text-[10px] flex-shrink-0">7</span>
+                                <span class="font-medium text-slate-800">Thưởng ý thức chất lượng công việc</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-sunred-50/60 rounded-xl border border-sunred-200 overflow-x-auto">
+                            <span class="font-bold text-sunred-950 text-xs block mb-1">Cách tính Thu nhập cơ bản:</span>
+                            <code class="text-sunred-900 font-bold text-[10.5px] sm:text-[11px] leading-tight block whitespace-nowrap">
+                                = { (1) + ... + (6) + (7) × Hệ số đánh giá tháng } × (Số ngày công hưởng lương / Số ngày công tiêu chuẩn)
+                            </code>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2 text-slate-700 text-xs">
+                            <span class="font-bold text-slate-900 block border-b border-slate-200 pb-1">Trong đó:</span>
+                            <p class="leading-relaxed">
+                                <strong>- Số ngày công hưởng lương bao gồm:</strong> Ngày thực hiện nhiệm vụ bay, ngày thực hiện nhiệm vụ mặt đất theo lịch bố trí của Công ty, ngày huấn luyện, giảng dạy, đi học đào tạo theo lịch của Công ty, ngày nghỉ theo lịch tổ chức của Hãng (OFF/ trống lịch..). <em>Không bao gồm:</em> nghỉ không lương, nghỉ ốm, nghỉ thai sản...
+                            </p>
+                            <p class="leading-relaxed">
+                                <strong>- Số ngày công tiêu chuẩn:</strong> Là số ngày theo lịch hàng tháng.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION II -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="border-b border-sunred-100 pb-2">
+                        <h4 class="font-black text-sunred-900 text-sm uppercase tracking-wider flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sunred-800"></span>
+                            <span>II. Đơn giá theo hiệu suất bay / Performance flight rates</span>
+                        </h4>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block text-sunred-900">(1) Đơn giá giờ bay thương mại</span>
+                            <p class="text-slate-700 text-xs leading-relaxed">Được tính theo số giờ thực tế trong tháng và tính từ giờ thứ 01.</p>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block text-sunred-900">(2) Đơn giá giờ bay huấn luyện</span>
+                            <p class="text-slate-700 text-xs leading-relaxed">
+                                Là thời gian Tiếp viên thực hiện huấn luyện bay trên các chuyến bay vào ngày làm việc theo lịch được phân công.<br>
+                                <strong>- Số giờ được tính:</strong> theo số giờ thực tế trong tháng và tính từ giờ thứ 1.
+                            </p>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block text-sunred-900">(3) Đơn giá chặng bay</span>
+                            <p class="text-slate-700 text-xs leading-relaxed">
+                                - 1 chặng bay được tính = 1 lần cất và hạ cánh.<br>
+                                - Được tính từ chặng thứ 1.
+                            </p>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block text-sunred-900">(4) Đơn giá chuyển sân</span>
+                            <p class="text-slate-700 text-xs leading-relaxed">
+                                Di chuyển trên chuyến bay của Hãng để phục vụ nhiệm vụ bay hoặc di chuyển về base.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION III -->
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                    <div class="border-b border-sunred-100 pb-2">
+                        <h4 class="font-black text-sunred-900 text-sm uppercase tracking-wider flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-sunred-800"></span>
+                            <span>III. Các khoản phụ cấp bổ sung khác / Additional allowance</span>
+                        </h4>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block text-sunred-900 mb-1">(1) Hỗ trợ ăn ca</span>
+                            <p class="text-xs text-slate-700">50.000 VNĐ/ngày công thực tế.</p>
+                        </div>
+
+                        <div class="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+                            <span class="font-bold text-slate-900 text-xs sm:text-sm block text-sunred-900 mb-1">(2) Hỗ trợ gửi xe</span>
+                            <p class="text-xs text-slate-700">10.000 VNĐ/ngày công thực tế.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-white px-6 py-3 flex items-center justify-end">
+                <button onclick="closeExplanationModal()" class="px-5 py-2.5 text-xs font-bold bg-sunred-900 hover:bg-sunred-800 text-white rounded-xl shadow-md transition-all cursor-pointer">
+                    Đóng cửa sổ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Gửi Yêu Cầu -->
+    <div id="requestModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-sunred-950 text-white px-6 py-4 flex items-center justify-between border-b border-sunred-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-sunred-800 flex items-center justify-center text-sungold-500">
+                        <i class="fa-solid fa-paper-plane text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-white">GỬI YÊU CẦU / GÓP Ý</h3>
+                        <p class="text-[11px] text-slate-300 font-light">Yêu cầu của bạn sẽ được lưu lại để xem xét</p>
+                    </div>
+                </div>
+                <button onclick="closeRequestModal()" class="w-8 h-8 rounded-full bg-sunred-900 hover:bg-sunred-800 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Họ tên / Mã nhân viên (Tùy chọn):</label>
+                    <input type="text" id="reqSenderName" placeholder="Nhập tên hoặc mã nhân viên..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-sunred-800">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nội dung yêu cầu / Góp ý chỉnh sửa:</label>
+                    <textarea id="reqContent" rows="4" placeholder="Nhập yêu cầu chỉnh sửa hoặc góp ý chi tiết..." class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:border-sunred-800 resize-none"></textarea>
+                </div>
+            </div>
+            <div class="bg-slate-50 px-6 py-3 flex items-center justify-end space-x-3 border-t border-slate-200">
+                <button onclick="closeRequestModal()" class="px-4 py-2 text-xs font-bold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition-all">Hủy</button>
+                <button onclick="submitUserRequest()" class="px-5 py-2 text-xs font-bold bg-sunred-900 hover:bg-sunred-800 text-white rounded-xl shadow-md transition-all">Gửi yêu cầu ngay</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Owner Notes Dashboard -->
+    <div id="ownerModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-sungold-500">
+                        <i class="fa-solid fa-shield-halved text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-white">QUẢN LÝ YÊU CẦU (CHỦ SỞ HỮU)</h3>
+                        <p class="text-[11px] text-slate-300 font-light">Xem, chỉnh sửa hoặc xóa các yêu cầu được gửi từ người dùng</p>
+                    </div>
+                </div>
+                <button onclick="closeOwnerModal()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-4 flex-1 bg-slate-50">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-700">Danh sách các yêu cầu (<span id="ownerNoteCount">0</span>):</span>
+                    <button onclick="clearAllNotes()" class="text-[11px] font-semibold text-rose-700 hover:text-rose-800 underline">Xóa tất cả</button>
+                </div>
+                
+                <div id="ownerNotesContainer" class="space-y-3">
+                </div>
+            </div>
+
+            <div class="bg-white px-6 py-3 flex items-center justify-end border-t border-slate-200">
+                <button onclick="closeOwnerModal()" class="px-5 py-2.5 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-md transition-all">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Engine -->
+    <script>
+        // State tracking for uploaded Layover total amount
+        let uploadedLayoverTotalAmount = null;
+
+        const MAKEUP_ALLOWANCE = 300000;
+        const PHONE_ALLOWANCE = 200000;
+        const OFFICE_ALLOWANCE = 200000;
+        const CLOTHING_ALLOWANCE = 410000;
+
+        const HOURLY_RATE_LE85 = 126000;
+        const HOURLY_RATE_GT85 = 163800;
+        const SECTOR_RATE = 63000;
+        const DEADHEAD_RATE = 37800;
+        const MEAL_DAILY_RATE = 50000;
+        const PARKING_DAILY_RATE = 10000;
+
+        const BONUS_RATE = 4390000;
+
+        const LAYOVER_DOMESTIC_RATE_24H = 450000;
+        const LAYOVER_INTL_RATE_24H = 1600000;
+
+        const PQC_CONG_TAC_RATE = 3250000;
+        const PQC_HO_TRO_RATE = 4000000;
+
+        const BHXH_RATE = 0.105;
+        const UNION_FEE = 30000;
+
+        const PERSONAL_DEDUCTION = 15500000;
+        const DEPENDENT_DEDUCTION = 6200000;
+
+        const TAX_BRACKETS_5 = [
+            { max: 10000000, rate: 0.05 },
+            { max: 30000000, rate: 0.10 },
+            { max: 60000000, rate: 0.20 },
+            { max: 100000000, rate: 0.30 },
+            { max: Infinity, rate: 0.35 }
+        ];
+
+        // --- HÀM XỬ LÝ UPLOAD VÀ ĐỌC FILE BẢNG LƯƠNG BẰNG GEMINI AI ---
+        async function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            const uploadBtnText = document.getElementById('uploadBtnText');
+            const statusDiv = document.getElementById('aiStatus');
+            const statusIcon = document.getElementById('aiStatusIcon');
+            const statusText = document.getElementById('aiStatusText');
+
+            if (uploadBtnText) uploadBtnText.innerText = files.map(f => f.name).join(', ');
+            if (statusDiv) {
+                statusDiv.classList.remove('hidden', 'bg-red-50', 'bg-emerald-50');
+                statusDiv.classList.add('bg-amber-50');
+            }
+            if (statusIcon) statusIcon.className = 'fa-solid fa-spinner animate-spin text-amber-600 text-sm';
+            if (statusText) {
+                statusText.className = 'text-amber-800 font-medium';
+                statusText.innerText = 'Đang tự động quét và nhập dữ liệu từ bảng lương...';
+            }
+
+            try {
+                let parts = [{ text: "Trích xuất chính xác tất cả các thông số từ bảng lương (cả ảnh và PDF) vào định dạng JSON. Các trường JSON bao gồm: ratingScore (điểm đánh giá), standardWorkDays (công chuẩn), actualWorkDays (công thực tế), totalFlightHours (giờ bay), sectorsCount (chặng bay), deadheadHours (giờ chuyển sân), mealAllowanceAmount (tổng số tiền Hỗ trợ ăn ca trên phiếu), parkingAllowanceAmount (tổng số tiền Hỗ trợ gửi xe trên phiếu), domesticLayoverHours (giờ layover nội địa), intlLayoverHours (giờ layover quốc tế), layoverTotalAmount (tổng số tiền Layover nếu có), welfareAllowance (số tiền Chế độ phúc lợi), dependentsCount (người phụ thuộc, chú ý: nếu không có hoặc bằng 0 thì trả về 0), pqcCongTacAmount (số tiền Công tác phí tại Base Phú Quốc nếu có), pqcHoTroAmount (số tiền Hỗ trợ chuyển Base Phú Quốc nếu có)." }];
+
+                for (const file of files.slice(0, 2)) {
+                    const base64Data = await fileToBase64(file);
+                    const pureBase64 = base64Data.split(',')[1];
+                    const fileType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png');
+                    parts.push({
+                        inlineData: {
+                            mimeType: fileType,
+                            data: pureBase64
+                        }
+                    });
+                }
+
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: "user", parts: parts }],
+                        generationConfig: {
+                            responseMimeType: "application/json"
+                        }
+                    })
+                });
+
+                const result = await response.json();
+                const jsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (jsonText) {
+                    const extracted = JSON.parse(jsonText);
+
+                    if (extracted.layoverTotalAmount !== undefined && extracted.layoverTotalAmount !== null && extracted.layoverTotalAmount > 0) {
+                        uploadedLayoverTotalAmount = extracted.layoverTotalAmount;
+                    } else if (extracted.domesticLayoverHours || extracted.intlLayoverHours) {
+                        uploadedLayoverTotalAmount = null;
+                    }
+
+                    if (extracted.ratingScore) setInputValue('inputC4', extracted.ratingScore);
+                    if (extracted.standardWorkDays) setInputValue('inputG4', extracted.standardWorkDays);
+                    if (extracted.actualWorkDays) setInputValue('inputG9', extracted.actualWorkDays);
+                    if (extracted.totalFlightHours) setInputValue('inputD18', extracted.totalFlightHours);
+                    if (extracted.sectorsCount) setInputValue('inputG22', extracted.sectorsCount);
+                    if (extracted.deadheadHours) setInputValue('inputG23', extracted.deadheadHours);
+
+                    // Giữ toggle ở trạng thái tắt, bật chế độ Direct Amount để điền thẳng số tiền Thành tiền rồi tính ngược ra số ngày
+                    const globalToggle = document.getElementById('checkGlobalAmountMode');
+                    if (globalToggle && globalToggle.checked) {
+                        globalToggle.checked = false;
+                        toggleGlobalAmountMode();
+                    }
+
+                    if (extracted.mealAllowanceAmount !== undefined && extracted.mealAllowanceAmount !== null && extracted.mealAllowanceAmount > 0) {
+                        const mealDays = extracted.mealAllowanceAmount / MEAL_DAILY_RATE;
+                        setInputValue('inputG28', mealDays);
+                    }
+
+                    if (extracted.domesticLayoverHours) setInputValue('inputF35', extracted.domesticLayoverHours);
+                    if (extracted.intlLayoverHours) setInputValue('inputG35', extracted.intlLayoverHours);
+                    if (extracted.dependentsCount) setInputValue('inputH50', extracted.dependentsCount);
+                    
+                    const labelWelfareRow = document.getElementById('labelWelfareRow');
+                    const cellWelfareInput = document.getElementById('cellWelfareInput');
+                    const welInput = document.getElementById('inputWelfare');
+
+                    if (extracted.welfareAllowance !== undefined && extracted.welfareAllowance !== null && Number(extracted.welfareAllowance) > 0) {
+                        if (labelWelfareRow) labelWelfareRow.setAttribute('colspan', '2');
+                        if (cellWelfareInput) cellWelfareInput.classList.remove('hidden');
+                        if (welInput) {
+                            welInput.value = formatCurrency(extracted.welfareAllowance);
+                            checkInputSun(welInput);
+                        }
+                    } else {
+                        if (labelWelfareRow) labelWelfareRow.setAttribute('colspan', '3');
+                        if (cellWelfareInput) cellWelfareInput.classList.add('hidden');
+                        if (welInput) {
+                            welInput.value = '';
+                            checkInputSun(welInput);
+                        }
+                    }
+
+                    // Quy tắc PQC: Chỉ bật công tắc Chuyển PQC khi số tiền Công tác phí hoặc Hỗ trợ Phú Quốc > 0
+                    const pqcCheck = document.getElementById('checkPQC');
+                    if (pqcCheck) {
+                        const hasPqcAmount = (extracted.pqcCongTacAmount && extracted.pqcCongTacAmount > 0) || 
+                                             (extracted.pqcHoTroAmount && extracted.pqcHoTroAmount > 0);
+                        pqcCheck.checked = Boolean(hasPqcAmount);
+                        togglePQCInputs();
+                    }
+
+                    calculateAll();
+
+                    if (statusDiv) {
+                        statusDiv.classList.remove('bg-amber-50');
+                        statusDiv.classList.add('bg-emerald-50');
+                    }
+                    if (statusIcon) statusIcon.className = 'fa-solid fa-circle-check text-emerald-600 text-sm';
+                    if (statusText) {
+                        statusText.className = 'text-emerald-800 font-bold';
+                        statusText.innerText = 'Trích xuất dữ liệu thành công!';
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                if (statusDiv) {
+                    statusDiv.classList.remove('bg-amber-50');
+                    statusDiv.classList.add('bg-rose-50');
+                }
+                if (statusIcon) statusIcon.className = 'fa-solid fa-triangle-exclamation text-rose-600 text-sm';
+                if (statusText) {
+                    statusText.className = 'text-rose-800 font-bold';
+                    statusText.innerText = 'Không thể tự động đọc file. Vui lòng kiểm tra lại!';
+                }
+            }
+        }
+
+        function setInputValue(id, val) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = val;
+                checkInputSun(el);
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function initPayrollPeriod() {
+            const now = new Date();
+            now.setMonth(now.getMonth() - 1);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const el = document.getElementById('currentMonthYear');
+            if (el) el.innerText = `${month}/${year}`;
+        }
+
+        function onJobTitleChange() {
+            const select = document.getElementById('inputJobTitle');
+            const unitBaseSpan = document.getElementById('unitBaseSalary');
+            const customWrapper = document.getElementById('wrapperCustomBaseSalary');
+            const selectedKey = select ? select.value : 'tnhk';
+
+            if (selectedKey === 'tvktg' || selectedKey === 'tvt') {
+                if (unitBaseSpan) unitBaseSpan.classList.add('hidden');
+                if (customWrapper) customWrapper.classList.remove('hidden');
+            } else {
+                if (unitBaseSpan) {
+                    unitBaseSpan.innerText = formatCurrency(6000000);
+                    unitBaseSpan.classList.remove('hidden');
+                }
+                if (customWrapper) {
+                    customWrapper.classList.add('hidden');
+                    const customInput = document.getElementById('inputCustomBaseSalary');
+                    if (customInput) {
+                        customInput.value = '';
+                        checkInputSun(customInput);
+                    }
+                }
+            }
+            calculateAll();
+        }
+
+        function checkInputSun(input) {
+            const wrapper = input.closest('.input-sun-wrapper');
+            if (!wrapper) return;
+            if (input.value !== '') {
+                wrapper.classList.add('has-value');
+            } else {
+                wrapper.classList.remove('has-value');
+            }
+        }
+
+        function formatCurrency(val) {
+            const num = Number(val);
+            if (isNaN(num)) return '0';
+            return Math.round(num).toLocaleString('vi-VN');
+        }
+
+        function parseCurrency(str) {
+            if (!str) return 0;
+            return parseFloat(str.toString().replace(/\./g, '').replace(/,/g, '')) || 0;
+        }
+
+        function handleCurrencyInput(input) {
+            let val = input.value.replace(/\D/g, '');
+            if (val === '') {
+                input.value = '';
+                return;
+            }
+            input.value = parseInt(val, 10).toLocaleString('vi-VN');
+        }
+
+        function safeSetText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = text;
+        }
+
+        function togglePQCInputs() {
+            const checked = document.getElementById('checkPQC').checked;
+            const pqcDaysWrapper = document.getElementById('pqcDaysWrapper');
+            const rowCongTac = document.getElementById('rowPqcCongTac');
+            const rowHoTro = document.getElementById('rowPqcHoTro');
+            const labelWelfare = document.getElementById('labelWelfareRow');
+
+            if (checked) {
+                if (pqcDaysWrapper) pqcDaysWrapper.classList.remove('hidden');
+                if (rowCongTac) rowCongTac.classList.remove('hidden');
+                if (rowHoTro) rowHoTro.classList.remove('hidden');
+                if (labelWelfare) labelWelfare.innerText = "4. Chế độ phúc lợi (Quà sinh nhật/ Cưới hỏi/ Sinh con/ Ốm đau...)";
+            } else {
+                if (pqcDaysWrapper) pqcDaysWrapper.classList.add('hidden');
+                if (rowCongTac) rowCongTac.classList.add('hidden');
+                if (rowHoTro) rowHoTro.classList.add('hidden');
+                if (labelWelfare) labelWelfare.innerText = "2. Chế độ phúc lợi (Quà sinh nhật/ Cưới hỏi/ Sinh con/ Ốm đau...)";
+                const pqcDaysInput = document.getElementById('inputPqcDays');
+                if (pqcDaysInput) pqcDaysInput.value = '';
+            }
+        }
+
+        function toggleSickInputs() {
+            const checked = document.getElementById('checkSick').checked;
+            const sickDaysWrapper = document.getElementById('sickDaysWrapper');
+            if (checked) {
+                if (sickDaysWrapper) sickDaysWrapper.classList.remove('hidden');
+            } else {
+                if (sickDaysWrapper) sickDaysWrapper.classList.add('hidden');
+                const sickDaysInput = document.getElementById('inputSickDays');
+                if (sickDaysInput) sickDaysInput.value = '';
+            }
+        }
+
+        let isGlobalAmountMode = false;
+
+        function toggleGlobalAmountMode() {
+            const checkbox = document.getElementById('checkGlobalAmountMode');
+            isGlobalAmountMode = checkbox.checked;
+
+            const mealDaysWrapper = document.getElementById('mealDaysWrapper');
+            const mealDaysDisplay = document.getElementById('mealDaysDisplay');
+            const mealAmtWrapper = document.getElementById('mealAmountWrapper');
+            const mealStaticVal = document.getElementById('outH28');
+            const daysInput = document.getElementById('inputG28');
+            const amtInput = document.getElementById('inputMealAmount');
+
+            const parkingAmtWrapper = document.getElementById('parkingAmountWrapper');
+            const parkingStaticVal = document.getElementById('outH29');
+            const parkingAmtInput = document.getElementById('inputParkingAmount');
+
+            if (isGlobalAmountMode) {
+                if (mealDaysWrapper) mealDaysWrapper.classList.add('hidden');
+                if (mealDaysDisplay) mealDaysDisplay.classList.remove('hidden');
+                if (mealAmtWrapper) mealAmtWrapper.classList.remove('hidden');
+                if (mealStaticVal) mealStaticVal.classList.add('hidden');
+                if (daysInput) {
+                    daysInput.value = '';
+                    checkInputSun(daysInput);
+                }
+
+                if (parkingAmtWrapper) parkingAmtWrapper.classList.remove('hidden');
+                if (parkingStaticVal) parkingStaticVal.classList.add('hidden');
+            } else {
+                if (mealDaysWrapper) mealDaysWrapper.classList.remove('hidden');
+                if (mealDaysDisplay) mealDaysDisplay.classList.add('hidden');
+                if (mealAmtWrapper) mealAmtWrapper.classList.add('hidden');
+                if (mealStaticVal) mealStaticVal.classList.remove('hidden');
+                if (amtInput) {
+                    amtInput.value = '';
+                    checkInputSun(amtInput);
+                }
+
+                if (parkingAmtWrapper) parkingAmtWrapper.classList.add('hidden');
+                if (parkingStaticVal) parkingStaticVal.classList.remove('hidden');
+                if (parkingAmtInput) {
+                    parkingAmtInput.value = '';
+                    checkInputSun(parkingAmtInput);
+                }
+            }
+            handleAllowanceInput();
+            calculateAll();
+        }
+
+        function getSavedNotes() {
+            try {
+                return JSON.parse(localStorage.getItem('icrew_user_requests')) || [];
+            } catch(e) {
+                return [];
+            }
+        }
+
+        function saveNotesToStorage(notes) {
+            localStorage.setItem('icrew_user_requests', JSON.stringify(notes));
+            updateOwnerBadge();
+        }
+
+        function updateOwnerBadge() {
+            const notes = getSavedNotes();
+            const badge = document.getElementById('ownerBadgeCount');
+            if (badge) badge.innerText = notes.length;
+        }
+
+        function openRequestModal() {
+            document.getElementById('reqSenderName').value = '';
+            document.getElementById('reqContent').value = '';
+            document.getElementById('requestModal').classList.remove('hidden');
+        }
+
+        function closeRequestModal() {
+            document.getElementById('requestModal').classList.add('hidden');
+        }
+
+        function submitUserRequest() {
+            const sender = document.getElementById('reqSenderName').value.trim() || 'Ẩn danh';
+            const content = document.getElementById('reqContent').value.trim();
+
+            if (!content) {
+                alert('Vui lòng nhập nội dung yêu cầu!');
+                return;
+            }
+
+            const now = new Date();
+            const timeString = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            const dateString = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+            const fullTimestamp = `${timeString} - ${dateString}`;
+
+            const newNote = {
+                id: 'note_' + Date.now(),
+                sender: sender,
+                content: content,
+                timestamp: fullTimestamp,
+                status: 'Chưa xử lý'
+            };
+
+            const notes = getSavedNotes();
+            notes.unshift(newNote);
+            saveNotesToStorage(notes);
+
+            closeRequestModal();
+            alert('Gửi yêu cầu thành công! Chủ sở hữu sẽ xem xét và xử lý.');
+        }
+
+        function openOwnerModal() {
+            renderOwnerNotes();
+            document.getElementById('ownerModal').classList.remove('hidden');
+        }
+
+        function closeOwnerModal() {
+            document.getElementById('ownerModal').classList.add('hidden');
+        }
+
+        function renderOwnerNotes() {
+            const notes = getSavedNotes();
+            const container = document.getElementById('ownerNotesContainer');
+            const countEl = document.getElementById('ownerNoteCount');
+            if (countEl) countEl.innerText = notes.length;
+
+            if (!container) return;
+
+            if (notes.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-10 bg-white rounded-xl border border-slate-200">
+                        <i class="fa-solid fa-inbox text-slate-300 text-3xl mb-2"></i>
+                        <p class="text-xs text-slate-500 font-medium">Chưa có yêu cầu hoặc góp ý nào được gửi.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            notes.forEach((note) => {
+                html += `
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2 relative" id="note_card_${note.id}">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-900"><i class="fa-solid fa-user text-sunred-800 mr-1.5"></i>${escapeHtml(note.sender)}</span>
+                            <span class="text-[11px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full font-medium"><i class="fa-regular fa-clock mr-1"></i>${note.timestamp}</span>
+                        </div>
+                        
+                        <div id="note_content_view_${note.id}">
+                            <p class="text-xs text-slate-700 whitespace-pre-line bg-slate-50 p-3 rounded-lg border border-slate-100">${escapeHtml(note.content)}</p>
+                        </div>
+
+                        <div id="note_content_edit_${note.id}" class="hidden space-y-2 pt-1">
+                            <textarea id="note_textarea_${note.id}" rows="3" class="w-full px-3 py-2 text-xs border border-sunred-800 rounded-lg focus:outline-none">${note.content}</textarea>
+                            <div class="flex items-center justify-end space-x-2">
+                                <button onclick="cancelEditNote('${note.id}')" class="px-3 py-1 text-[11px] font-bold bg-slate-200 text-slate-700 rounded-lg">Hủy</button>
+                                <button onclick="saveEditedNote('${note.id}')" class="px-3 py-1 text-[11px] font-bold bg-sunred-900 text-white rounded-lg">Lưu lại</button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                            <span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>${note.status}</span>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="enableEditNote('${note.id}')" class="text-blue-600 hover:text-blue-800 font-semibold"><i class="fa-solid fa-pen-to-square mr-1"></i>Chỉnh sửa</button>
+                                <button onclick="deleteNote('${note.id}')" class="text-rose-600 hover:text-rose-800 font-semibold"><i class="fa-solid fa-trash mr-1"></i>Xóa</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function enableEditNote(id) {
+            document.getElementById(`note_content_view_${id}`).classList.add('hidden');
+            document.getElementById(`note_content_edit_${id}`).classList.remove('hidden');
+        }
+
+        function cancelEditNote(id) {
+            document.getElementById(`note_content_view_${id}`).classList.remove('hidden');
+            document.getElementById(`note_content_edit_${id}`).classList.add('hidden');
+        }
+
+        function saveEditedNote(id) {
+            const newText = document.getElementById(`note_textarea_${id}`).value.trim();
+            if (!newText) {
+                alert('Nội dung không được để trống!');
+                return;
+            }
+            const notes = getSavedNotes();
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note.content = newText;
+                const now = new Date();
+                const timeString = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+                const dateString = String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+                note.timestamp = `${timeString} - ${dateString} (đã sửa)`;
+                saveNotesToStorage(notes);
+                renderOwnerNotes();
+            }
+        }
+
+        function deleteNote(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa yêu cầu này?')) {
+                let notes = getSavedNotes();
+                notes = notes.filter(n => n.id !== id);
+                saveNotesToStorage(notes);
+                renderOwnerNotes();
+            }
+        }
+
+        function clearAllNotes() {
+            if (confirm('Xóa tất cả các yêu cầu đã lưu?')) {
+                localStorage.removeItem('icrew_user_requests');
+                saveNotesToStorage([]);
+                renderOwnerNotes();
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function handleAllowanceInput() {
+            const daysVal = document.getElementById('inputG28')?.value.trim() || '';
+            const mealAmtVal = document.getElementById('inputMealAmount')?.value.trim() || '';
+            const parkingAmtVal = document.getElementById('inputParkingAmount')?.value.trim() || '';
+            
+            const toggleContainer = document.getElementById('checkGlobalAmountMode')?.closest('.relative');
+            if (!toggleContainer) return;
+
+            if (daysVal !== '' || mealAmtVal !== '' || parkingAmtVal !== '') {
+                toggleContainer.classList.add('opacity-40');
+            } else {
+                toggleContainer.classList.remove('opacity-40');
+            }
+        }
+
+        function calculateAll() {
+            const select = document.getElementById('inputJobTitle');
+            const selectedKey = select ? select.value : 'tnhk';
+            
+            let currentBaseSalary = 6000000;
+            if (selectedKey === 'tvktg' || selectedKey === 'tvt') {
+                currentBaseSalary = parseCurrency(document.getElementById('inputCustomBaseSalary')?.value);
+            } else {
+                const unitBaseSpan = document.getElementById('unitBaseSalary');
+                if (unitBaseSpan) unitBaseSpan.innerText = formatCurrency(6000000);
+            }
+
+            const C4 = parseFloat(document.getElementById('inputC4').value) || 0;
+            const G4 = parseFloat(document.getElementById('inputG4').value) || 0;
+            const rawG9 = parseFloat(document.getElementById('inputG9').value) || 0;
+            
+            const isSickChecked = document.getElementById('checkSick').checked;
+            let sickDays = 0;
+            if (isSickChecked) {
+                sickDays = parseFloat(document.getElementById('inputSickDays')?.value) || 0;
+            }
+            const G9 = Math.max(0, rawG9 - sickDays);
+
+            const D18 = parseFloat(document.getElementById('inputD18').value) || 0;
+            const G22 = parseFloat(document.getElementById('inputG22').value) || 0;
+            const G23 = parseFloat(document.getElementById('inputG23').value) || 0;
+
+            let H28 = 0;
+            let G28 = 0;
+            let H29 = 0;
+            let parkingDays = 0;
+
+            if (isGlobalAmountMode) {
+                H28 = parseCurrency(document.getElementById('inputMealAmount').value);
+                G28 = MEAL_DAILY_RATE > 0 ? (H28 / MEAL_DAILY_RATE) : 0;
+
+                H29 = parseCurrency(document.getElementById('inputParkingAmount').value);
+                parkingDays = PARKING_DAILY_RATE > 0 ? (H29 / PARKING_DAILY_RATE) : 0;
+            } else {
+                G28 = parseFloat(document.getElementById('inputG28').value) || 0;
+                H28 = G28 * MEAL_DAILY_RATE;
+
+                parkingDays = G28;
+                H29 = parkingDays * PARKING_DAILY_RATE;
+            }
+
+            const F35 = parseFloat(document.getElementById('inputF35').value) || 0;
+            const G35 = parseFloat(document.getElementById('inputG35').value) || 0;
+            const welfareInput = parseCurrency(document.getElementById('inputWelfare').value);
+            const H50 = parseInt(document.getElementById('inputH50').value) || 0;
+            const isPQC = document.getElementById('checkPQC').checked;
+
+            const workDaysDisplay = G9 % 1 === 0 ? G9.toFixed(0) : G9.toFixed(1);
+
+            safeSetText('outG9_val2', workDaysDisplay);
+            safeSetText('outG9_val3', workDaysDisplay);
+            safeSetText('outG9_val4', workDaysDisplay);
+            safeSetText('outG9_val5', workDaysDisplay);
+            
+            const hoursLE85 = Math.min(D18, 85);
+            const hoursGT85 = Math.max(0, D18 - 85);
+
+            let calculatedMealDaysDisplay = G28 > 0 ? (G28 % 1 === 0 ? G28.toString() : G28.toFixed(1)) : '0';
+            safeSetText('mealDaysDisplay', calculatedMealDaysDisplay);
+
+            let parkingDaysDisplay = parkingDays > 0 ? ((parkingDays % 1 === 0) ? parkingDays.toString() : parkingDays.toFixed(1)) : '0';
+            safeSetText('outParkingDays', parkingDaysDisplay);
+
+            safeSetText('outWelfareVal', formatCurrency(welfareInput));
+
+            const ratioWork = G4 > 0 ? (G9 / G4) : 0;
+            const H9 = currentBaseSalary * ratioWork;
+            const H10 = MAKEUP_ALLOWANCE * ratioWork;
+            const H11 = PHONE_ALLOWANCE * ratioWork;
+            const H12 = OFFICE_ALLOWANCE * ratioWork;
+            const H13 = CLOTHING_ALLOWANCE * ratioWork;
+            const secI_Total = H9 + H10 + H11 + H12 + H13;
+
+            safeSetText('outH9', formatCurrency(H9));
+            safeSetText('outH10', formatCurrency(H10));
+            safeSetText('outH11', formatCurrency(H11));
+            safeSetText('outH12', formatCurrency(H12));
+            safeSetText('outH13', formatCurrency(H13));
+            safeSetText('outSecI', formatCurrency(secI_Total));
+
+            const H18 = hoursLE85 * HOURLY_RATE_LE85;
+            const H19 = hoursGT85 * HOURLY_RATE_GT85;
+            const totalFlightSalary = H18 + H19;
+            const H22 = G22 * SECTOR_RATE;
+            const H23 = G23 * DEADHEAD_RATE;
+            
+            const bonusWork = G9;
+            const bonusTotal = G4 > 0 ? (BONUS_RATE * bonusWork / G4) : 0;
+
+            safeSetText('outBonusWork', workDaysDisplay);
+            safeSetText('outBonusTotal', formatCurrency(bonusTotal));
+            safeSetText('outSecIITotalFlight', formatCurrency(totalFlightSalary));
+            safeSetText('outH22', formatCurrency(H22));
+            safeSetText('outH23', formatCurrency(H23));
+
+            const secII_Total = totalFlightSalary + H22 + H23 + bonusTotal;
+            safeSetText('outSecII', formatCurrency(secII_Total));
+
+            const secIII_Total = H28 + H29;
+            safeSetText('outH28', formatCurrency(H28));
+            safeSetText('outH29', formatCurrency(H29));
+            safeSetText('outSecIII', formatCurrency(secIII_Total));
+
+            // Layover Calculation & Layout adjustment
+            let H35 = 0;
+            const labelCell = document.getElementById('layoverLabelCell');
+            const domCell = document.getElementById('layoverDomCell');
+            const intlCell = document.getElementById('layoverIntlCell');
+
+            if (uploadedLayoverTotalAmount !== null) {
+                H35 = uploadedLayoverTotalAmount;
+                if (labelCell) labelCell.setAttribute('colspan', '3');
+                if (domCell) domCell.classList.add('hidden');
+                if (intlCell) intlCell.classList.add('hidden');
+            } else {
+                H35 = (F35 * LAYOVER_DOMESTIC_RATE_24H / 24) + (G35 * LAYOVER_INTL_RATE_24H / 24);
+                if (labelCell) labelCell.removeAttribute('colspan');
+                if (domCell) domCell.classList.remove('hidden');
+                if (intlCell) intlCell.classList.remove('hidden');
+            }
+
+            let pqcCongTacVal = 0;
+            let pqcHoTroVal = 0;
+            if (isPQC) {
+                const rawPqcDays = document.getElementById('inputPqcDays')?.value.trim();
+                const parsedPqcDays = parseFloat(rawPqcDays);
+                const pqcDays = (rawPqcDays !== '' && !isNaN(parsedPqcDays)) ? parsedPqcDays : G9;
+                const pqcRatio = G4 > 0 ? (pqcDays / G4) : 0;
+                
+                pqcCongTacVal = PQC_CONG_TAC_RATE * pqcRatio;
+                pqcHoTroVal = PQC_HO_TRO_RATE * pqcRatio;
+
+                const pqcDaysDisplay = pqcDays % 1 === 0 ? pqcDays.toFixed(0) : pqcDays.toFixed(1);
+                safeSetText('outPqcCongTacRatio', pqcDaysDisplay);
+                safeSetText('outPqcHoTroRatio', pqcDaysDisplay);
+                safeSetText('outPqcCongTacVal', formatCurrency(pqcCongTacVal));
+                safeSetText('outPqcHoTroVal', formatCurrency(pqcHoTroVal));
+            }
+
+            const secIV_Total = H35 + pqcCongTacVal + pqcHoTroVal + welfareInput;
+            safeSetText('outH35', formatCurrency(H35));
+            safeSetText('outSecIV', formatCurrency(secIV_Total));
+
+            const tongA = secI_Total + secII_Total + secIII_Total + secIV_Total;
+            const tongB = (G4 > 0 ? (13500000 * ratioWork) : 0) + welfareInput;
+            const thuNhapApDung = Math.max(tongA, tongB);
+
+            safeSetText('outTongA', formatCurrency(tongA));
+            safeSetText('outTongB', formatCurrency(tongB));
+            safeSetText('outThuNhapApDung', formatCurrency(thuNhapApDung));
+
+            let H45 = 0;
+            let H46 = 0;
+            if (G9 > 5) {
+                H45 = currentBaseSalary * BHXH_RATE;
+                H46 = UNION_FEE;
+            }
+
+            const nonTaxableIncome = H11 + H12 + H13 + H28 + H35 + pqcHoTroVal;
+            const taxableIncome = Math.max(0, thuNhapApDung - nonTaxableIncome);
+
+            let totalFamilyDeduction = 0;
+            if (H50 >= 1) {
+                totalFamilyDeduction = PERSONAL_DEDUCTION + (H50 * DEPENDENT_DEDUCTION);
+            } else {
+                totalFamilyDeduction = 0;
+            }
+
+            const actualDeductionForPIT = PERSONAL_DEDUCTION + (H50 * DEPENDENT_DEDUCTION);
+            const assessableIncome = Math.max(0, taxableIncome - H45 - actualDeductionForPIT);
+            const H51 = computePIT(assessableIncome);
+
+            safeSetText('outH45', formatCurrency(H45));
+            safeSetText('outH46', formatCurrency(H46));
+            safeSetText('outH48', formatCurrency(nonTaxableIncome));
+            safeSetText('outH49', formatCurrency(taxableIncome));
+            safeSetText('outGiamTruGiaCanh', formatCurrency(totalFamilyDeduction));
+            safeSetText('outH51', formatCurrency(H51));
+
+            const tongTru = H45 + H46 + H51;
+            const finalNet = Math.max(0, thuNhapApDung - tongTru);
+            safeSetText('outFinalNet', formatCurrency(finalNet));
+            safeSetText('quickNetDisplay', formatCurrency(finalNet));
+        }
+
+        function computePIT(assessable) {
+            if (assessable <= 0) return 0;
+            let tax = 0;
+            let previousMax = 0;
+
+            for (let i = 0; i < TAX_BRACKETS_5.length; i++) {
+                const b = TAX_BRACKETS_5[i];
+                if (assessable > previousMax) {
+                    const taxableInBracket = Math.min(assessable - previousMax, b.max - previousMax);
+                    tax += taxableInBracket * b.rate;
+                    previousMax = b.max;
+                } else {
+                    break;
+                }
+            }
+            return tax;
+        }
+
+        function toggleExportMenu() {
+            const dropdown = document.getElementById('exportDropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        function openExplanationModal() {
+            const modal = document.getElementById('explanationModal');
+            if (modal) modal.classList.remove('hidden');
+        }
+
+        function closeExplanationModal() {
+            const modal = document.getElementById('explanationModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function resetForm() {
+            uploadedLayoverTotalAmount = null;
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.type === 'checkbox') input.checked = false;
+                else {
+                    input.value = '';
+                    checkInputSun(input);
+                }
+            });
+            const jobSelect = document.getElementById('inputJobTitle');
+            if (jobSelect) jobSelect.selectedIndex = 0;
+            
+            const labelWelfareRow = document.getElementById('labelWelfareRow');
+            const cellWelfareInput = document.getElementById('cellWelfareInput');
+            if (labelWelfareRow) labelWelfareRow.setAttribute('colspan', '2');
+            if (cellWelfareInput) cellWelfareInput.classList.remove('hidden');
+            const outWelfareEl = document.getElementById('outWelfareVal');
+            if (outWelfareEl) outWelfareEl.innerText = '0';
+
+            const uploadBtnText = document.getElementById('uploadBtnText');
+            if (uploadBtnText) uploadBtnText.innerText = 'Đọc Bảng Lương (AI)';
+            const statusDiv = document.getElementById('aiStatus');
+            if (statusDiv) statusDiv.classList.add('hidden');
+
+            onJobTitleChange();
+            togglePQCInputs();
+            toggleSickInputs();
+            calculateAll();
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName === 'INPUT' && activeElement.type !== 'checkbox') {
+                    if (event.key === ' ' && activeElement.type === 'text') {
+                        return;
+                    }
+                    event.preventDefault();
+                    
+                    const focusableInputs = Array.from(document.querySelectorAll('input:not([type="hidden"]):not([disabled]), select:not([disabled])'))
+                        .filter(el => el.offsetParent !== null);
+                    
+                    const currentIndex = focusableInputs.indexOf(activeElement);
+                    if (currentIndex !== -1) {
+                        const nextIndex = (currentIndex + 1) % focusableInputs.length;
+                        focusableInputs[nextIndex].focus();
+                        if (focusableInputs[nextIndex].tagName === 'INPUT' && focusableInputs[nextIndex].type === 'text') {
+                            focusableInputs[nextIndex].select();
+                        }
+                    }
+                }
+            }
+        });
+
+        function exportPayslipPDF() {
+            const element = document.getElementById('payslipPreviewCard');
+            const noPrintElements = element.querySelectorAll('.no-print');
+            noPrintElements.forEach(el => el.style.display = 'none');
+
+            element.classList.add('pdf-compact');
+            const opt = {
+                margin:       [5, 5, 5, 5],
+                filename:     'Phieu_Luong_ICrew.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().from(element).set(opt).save().then(() => {
+                element.classList.remove('pdf-compact');
+                noPrintElements.forEach(el => el.style.display = '');
+            }).catch(() => {
+                element.classList.remove('pdf-compact');
+                noPrintElements.forEach(el => el.style.display = '');
+            });
+        }
+
+        function exportPayslipImage() {
+            const element = document.getElementById('payslipPreviewCard');
+            const noPrintElements = element.querySelectorAll('.no-print');
+            noPrintElements.forEach(el => el.style.display = 'none');
+
+            element.classList.add('pdf-compact');
+            html2canvas(element, { scale: 2, useCORS: true }).then(canvas => {
+                element.classList.remove('pdf-compact');
+                noPrintElements.forEach(el => el.style.display = '');
+                const link = document.createElement('a');
+                link.download = 'Phieu_Luong_ICrew.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }).catch(() => {
+                element.classList.remove('pdf-compact');
+                noPrintElements.forEach(el => el.style.display = '');
+            });
+        }
+
+        window.onload = function() {
+            initPayrollPeriod();
+            onJobTitleChange();
+            togglePQCInputs();
+            toggleSickInputs();
+            updateOwnerBadge();
+            
+            document.querySelectorAll('input[type="number"], input[type="text"]').forEach(input => {
+                checkInputSun(input);
+            });
+        };
+    </script>
+</body>
+</html>
